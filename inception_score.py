@@ -44,28 +44,28 @@ def inception_score(imgs, cuda=True, batch_size=32, resize=False, splits=1):
         return F.softmax(x).data.cpu().numpy()
 
     # Get predictions
-    preds = np.zeros((N, 1000))
+    preds = np.zeros((N, 1000)) # N = 50000
 
     for i, batch in enumerate(dataloader, 0):
         batch = batch.type(dtype)
         batchv = Variable(batch)
-        batch_size_i = batch.size()[0]
+        batch_size_i = batch.size()[0]  # batch_size_i = 1
 
-        preds[i*batch_size:i*batch_size + batch_size_i] = get_pred(batchv)
+        preds[i*batch_size:i*batch_size + batch_size_i] = get_pred(batchv)  # preds（50000，1000），其中preds的每一行从0变为预测结果
 
     # Now compute the mean kl-div
     split_scores = []
 
-    for k in range(splits):
-        part = preds[k * (N // splits): (k+1) * (N // splits), :]
+    for k in range(splits):                                         # splits = 10
+        part = preds[k * (N // splits): (k+1) * (N // splits), :]   # part(5000,1000)，从preds中取5000行，再取5000行，依次。。。取完
         py = np.mean(part, axis=0)
         scores = []
         for i in range(part.shape[0]):
-            pyx = part[i, :]
-            scores.append(entropy(pyx, py))
-        split_scores.append(np.exp(np.mean(scores)))
+            pyx = part[i, :]                                        # pyx：part的每一行
+            scores.append(entropy(pyx, py))                         # part的每一行算一个score，则每个for循环内，scores的len为5000
+        split_scores.append(np.exp(np.mean(scores)))                # 每个for循环内，split_scores的len为1,最终，split_scores的len为10
 
-    return np.mean(split_scores), np.std(split_scores)
+    return np.mean(split_scores), np.std(split_scores)              # split_scores的mean和std
 
 if __name__ == '__main__':
     class IgnoreLabelDataset(torch.utils.data.Dataset):
@@ -92,4 +92,4 @@ if __name__ == '__main__':
     IgnoreLabelDataset(cifar)
 
     print ("Calculating Inception Score...")
-    print (inception_score(IgnoreLabelDataset(cifar), cuda=True, batch_size=32, resize=True, splits=10))
+    print (inception_score(IgnoreLabelDataset(cifar), cuda=True, batch_size=1, resize=True, splits=10)) # (mean,std) = (9.672783311773824, 0.14991609988012883)其中mean才是InceptionScore？
